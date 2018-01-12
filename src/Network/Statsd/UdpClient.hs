@@ -2,6 +2,7 @@ module Network.Statsd.UdpClient (
   UdpClient
 , fromURI
 , send
+, close
 ) where
 
 import Control.Monad
@@ -97,3 +98,6 @@ sign :: Key -> Payload -> Payload
 sign key payload = let keyBytes = BC.pack key
                        signature = toBytes (hmac keyBytes payload :: HMAC SHA256)
                     in B.append signature payload
+
+close :: UdpClient -> IO ()
+close client = Net.close $ getSocket client

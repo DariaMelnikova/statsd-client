@@ -30,6 +30,15 @@ instance Show Type where
   show Timing = "ms"
   show Histogram = "h"
 
+
+class (Show a) => Datagram a where
+   fmtDatagram :: Stat -> a -> Type -> String
+   fmtDatagram stat value statType = printf "%s:%s|%s" stat (show value) (show statType)
+
+instance Datagram Integer
+instance Datagram Double
+
+
 statsdClient :: String -> IO UdpClient
 statsdClient = fromURI . fromJust . parseURI
 
@@ -39,17 +48,24 @@ increment client stat = count client stat 1
 decrement :: UdpClient -> Stat -> IO ()
 decrement client stat = count client stat (-1)
 
-count :: UdpClient -> Stat -> Int -> IO ()
+count :: UdpClient -> Stat -> Integer -> IO ()
 count client stat value = void . send client $ fmtDatagram stat value Count
 
-gauge :: UdpClient -> Stat -> Int -> IO ()
-gauge client stat value = void . send client $ fmtDatagram stat value Gauge
+class (Datagram a) => Gauge a where
+  gauge :: UdpClient -> Stat -> a -> IO ()
+  gauge client stat value = void . send client $ fmtDatagram stat value Gauge
+
+instance Gauge Integer
+instance Gauge Double
+
 
 timing :: UdpClient -> Stat -> Millisecond -> IO ()
-timing client stat value = void . send client $ fmtDatagram stat (fromIntegral value) Timing
+timing client stat value = void . send client $ fmtDatagram stat ((fromIntegral value)::Integer)  Timing
 
-histogram :: UdpClient -> Stat -> Int -> IO ()
-histogram client stat value = void . send client $ fmtDatagram stat value Histogram
 
-fmtDatagram :: Stat -> Int -> Type -> String
-fmtDatagram stat value statType = printf "%s:%s|%s" stat (show value) (show statType)
+class (Datagram a) => Histogram a where
+  histogram :: UdpClient -> Stat -> a -> IO ()
+  histogram client stat value = void . send client $ fmtDatagram stat value Histogram
+
+instance Histogram Double
+instance Histogram Integer
